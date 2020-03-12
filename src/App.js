@@ -1,81 +1,118 @@
 import React from 'react';
 import './App.css';
-import CalcButtons from './components/Button'
+import NumButtons from './components/Button'
+import Result from './components/Result';
 
 class App extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      activeInput: false,
-      activeArr: [],
-      input: [],
-      val: 0
+      result: "",
+      avibleDots: 1,
+      blockingZero: true,
+      lastOperator: []
     }
   }
+  onClick = button => {
 
-  componentDidMount() {
-    let script = document.createElement('script')
-    script.src = 'https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js'
-    document.body.appendChild(script)
-  }
-
-  calc = () => {
-    this.setState({
-      input: this.state.input.concat(this.state.activeArr.join('')),
-      activeArr: []
-    }, () => {
-      this.state.input.map((item, index) => {
-        if (item === "+") {
-          this.setState({
-            activeArr: [parseInt(this.state.input[index - 1], 10) + parseInt(this.state.input[index + 1], 10)]
-          }, () => { console.log(this.state.val) })
-        }
-        return null;
-      })
-    });
-  }
-
-  getDataFromChild = (childData) => {
-    if (/\d/.test(childData) === true) {
-      this.setState({
-        activeInput: true,
-        activeArr: this.state.activeArr.concat(childData)
-      })
-    }
-    else if (childData === '.') {
-      this.setState({
-        activeArr: this.state.activeArr.concat(childData)
-      })
-
+    if (button === "=") {
+      this.calculate()
+    } else if (button === "AC") {
+      this.reset()
     } else {
+      //handling nums
+      if (/[0-9]/.test(button) === true) {
+        //multiple 0 handling
+        if (button === "0") {
+          if (this.state.blockingZero === true && this.state.result[this.state.result.length - 1] === "0") {
+            console.log("blocked")
+          } else {
+            this.setState({
+              result: this.state.result + button,
+            })
+          }
+        } else {
+          this.setState({
+            result: this.state.result + button,
+            blockingZero: false
+          })
+        }
+        //handling special chars
+      } else {
+        //handling multiple dots
+        if (button === "+" || "-" || "*" || "/") {
+          (() => {
+            this.setState({
+              avibleDots: 1,
+              blockingZero: true,
+            })
+          })();
+        }
+        if (button === "." && this.state.avibleDots === 1) {
+          this.setState({
+            result: this.state.result + button,
+            avibleDots: 0
+          })
+        } else if (button === "." && this.state.avibleDots === 0) {
+          console.log("no dots")
+        }
+        else if (this.state.result.endsWith("+") || this.state.result.endsWith("*") || this.state.result.endsWith("/")) {
+          (() => {
+            this.setState({
+              result: (() => {
+                if (button === "-") {
+                  return this.state.result
+                } else {
+                  //changing last operator
+                  let arr = this.state.result.split('').slice(0, -1)
+                  arr.push(button)
+                  arr = arr.join('')
+                  console.log(arr)
+                  return arr
+                }
+              })()
+            })
+          })();
+        }
+        else {
+          this.setState({
+            result: this.state.result + button
+          })
+        }
+      }
+
+    }
+  }
+  calculate = () => {
+    console.log(this.state.result, this.state.numCount)
+    try {
       this.setState({
-        input: (this.state.input.concat(this.state.activeArr.join('')).concat(childData)),
-        activeArr: []
+        //eslint-disable-next-line
+        result: (eval(this.state.result) || "") + ""
+      })
+    } catch (e) {
+      this.setState({
+        result: "error"
       })
     }
   }
-
-  clear = () => {
+  reset = () => {
     this.setState({
-      activeInput: false,
-      input: [],
-      val: 0
+      result: "",
+      avibleDots: 1,
+      blockingZero: true
     })
   }
+  backspace = () => {
+    this.setState({
+      result: this.state.result.slice(0, -1)
+    })
+  };
   render() {
     return (
       <div className="App">
-        <div id="display"
-          className="display"
-          onClick={this.calc}>
-          {this.state.activeInput === false ? 0 : this.state.input.length < 1 ? this.state.activeArr : this.state.input}</div>
-        <div
-          className="display">
-          {this.state.activeArr.length < 1 ? 0 : this.state.activeArr}</div>
-        <CalcButtons
-          parentCalc={this.calc}
-          clean={this.clear}
-          sendData={this.getDataFromChild} />
+        <Result result={this.state.result} />
+        <NumButtons onClick={this.onClick} />
       </div>
     );
   }
